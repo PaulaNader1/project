@@ -26,7 +26,10 @@ export default function Profile() {
 
         fetchProfile();
 
+        // Initialize WebSocket connection
         socket = io('http://localhost:3000');
+
+        // Listen for real-time updates on the order status
         socket.on('orderStatusUpdated', ({ orderId, status }) => {
             setOrders((prevOrders) =>
                 prevOrders.map((order) =>
@@ -35,10 +38,22 @@ export default function Profile() {
             );
         });
 
+        // Clean up WebSocket connection on component unmount
         return () => {
             socket.disconnect();
         };
     }, []);
+
+    const updateOrderStatus = async (orderId, status) => {
+        try {
+            await axios.put(`http://localhost:3000/api/orders/${orderId}/status`, { status });
+            // Emit status update via WebSocket
+            socket.emit('updateOrderStatus', { orderId, status });
+        } catch (err) {
+            console.error('Failed to update order status', err);
+            setError('Failed to update order status');
+        }
+    };
 
     if (!userInfo || orders.length === 0) return <div>Loading...</div>;
 
@@ -68,7 +83,9 @@ export default function Profile() {
                             padding: '20px',
                             borderRadius: '8px',
                             backgroundColor: '#fff',
-                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
                         }}>
                             <p style={{ color: '#000' }}><strong>Order ID:</strong> {order.order_id}</p>
                             <p style={{ color: '#000' }}><strong>Status:</strong> {order.order_status}</p>
@@ -80,6 +97,36 @@ export default function Profile() {
                                     </li>
                                 ))}
                             </ul>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button
+                                    onClick={() => updateOrderStatus(order.order_id, 'Shipped')}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: '#0070f3',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                    }}
+                                    disabled={order.order_status !== 'Pending'}
+                                >
+                                    Mark as Shipped
+                                </button>
+                                <button
+                                    onClick={() => updateOrderStatus(order.order_id, 'Delivered')}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: '#28a745',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                    }}
+                                    disabled={order.order_status !== 'Shipped'}
+                                >
+                                    Mark as Delivered
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

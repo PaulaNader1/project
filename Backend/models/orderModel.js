@@ -19,10 +19,10 @@ const createOrder = async (userId, products) => {
                 'INSERT INTO order_products (order_id, product_id, quantity) VALUES ($1, $2, $3)',
                 [orderId, product.product_id, product.quantity]
             );
-        }
+        }   
 
         await client.query('COMMIT');
-        return { orderId, order_status: 'Pending', created_at: orderResult.rows[0].created_at };
+        return { orderId, status: 'Pending', created_at: orderResult.rows[0].created_at };
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -47,7 +47,7 @@ const getOrderById = async (orderId) => {
 
 // Function to update order status
 const updateOrderStatus = async (orderId, status) => {
-    await pool.query('UPDATE orders SET order_status = $1 WHERE id = $2', [status, orderId]);
+    await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, orderId]);
 };
 
 const getOrdersByUserId = async (userId) => {

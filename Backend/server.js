@@ -30,7 +30,9 @@ app.use('/api/orders', ordersRoutes);
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
+    // Listen for status updates from the client
     socket.on('updateOrderStatus', ({ orderId, status }) => {
+        // Emit the status update to all clients
         io.emit('orderStatusUpdated', { orderId, status });
     });
 
