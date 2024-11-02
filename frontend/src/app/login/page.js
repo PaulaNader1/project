@@ -34,9 +34,12 @@ export default function Login() {
         if (!validateForm()) return;
 
         try {
-            const response = await axios.post(`http://localhost:3000/api/users/login`, { email, password });
+            const response = await axios.post(`http://192.168.1.6:3000/api/users/login`, { email, password });
             const { token } = response.data;
+            const userId = response.data.id
+            console.log(userId);
             localStorage.setItem('authToken', token);
+            localStorage.setItem('userId', userId); // Store userId for profile page
             setMessage('Login successful! Redirecting...');
             setTimeout(() => {
                 router.push('/'); // Redirect to home page
@@ -87,11 +90,11 @@ export default function Login() {
                 </button>
                 {message && <p style={{ color: 'green', fontSize: '0.9rem', marginTop: '10px' }}>{message}</p>}
 
-                <p style={{ marginTop: '15px' , color: '#000000'}}>
+                <p style={{ marginTop: '15px', color: '#000000' }}>
                     Don't have an account?{' '}
                     <span
                         onClick={() => router.push('/register')}
-                        style={{ color: '#000000', cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{ color: '#0070f3', cursor: 'pointer', textDecoration: 'underline' }}
                     >
                         Signup
                     </span>.

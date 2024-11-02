@@ -28,4 +28,16 @@ const getUserByEmail = async (email) => {
    }
 };
 
-module.exports = { createUser, getUserByEmail };
+const getUserById = async (id) => {
+    try {
+       const result = await pool.query(
+          'SELECT * FROM users WHERE id = $1',
+          [id]
+       );
+       return result.rows[0];
+    } catch (err) {
+       throw err;
+    }
+ };
+
+module.exports = { createUser, getUserByEmail, getUserById};
