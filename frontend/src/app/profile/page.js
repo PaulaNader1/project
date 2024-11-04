@@ -158,6 +158,7 @@ export default function Profile() {
 
                 const response = await axios.get(`http://localhost:3000/api/users/profile/${userId}`);
                 const role = response.data.userInfo.role;
+                localStorage.setItem('role', role);
                 setUserInfo(response.data.userInfo);
                 console.log("Role:", role);
 

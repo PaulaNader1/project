@@ -1,22 +1,47 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 export default function Navbar() {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userRole, setUserRole] = useState(null); // Start with null to indicate loading state
 
     useEffect(() => {
-        // Check if the user is authenticated
-        const token = localStorage.getItem('authToken');
-        setIsAuthenticated(!!token);
+        const fetchUserRole = async () => {
+            // Check if the user is authenticated
+            const token = localStorage.getItem('authToken');
+            setIsAuthenticated(!!token);
+            
+            if (token) {
+                const userId = localStorage.getItem('userId');
+                try {
+                    const role = await getRole(userId);
+                    setUserRole(role);
+                } catch (err) {
+                    console.error("Error fetching user role:", err);
+                }
+            }
+        };
+
+        fetchUserRole();
     }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userId');
+        localStorage.removeItem('role');
         setIsAuthenticated(false);
+        setUserRole(null); // Reset role on logout
         router.push('/login');
+    };
+
+    const getRole = async (id) => {
+        const response = await axios.get(`http://localhost:3000/api/users/profile/${id}`);
+        const role = response.data.userInfo.role;
+        console.log("Fetched role:", role);
+        return role;
     };
 
     return (
@@ -36,6 +61,20 @@ export default function Navbar() {
                 }}>
                     Profile
                 </button>
+                {userRole === 'admin' && (
+                    <button onClick={() => router.push('/chat/admin')} style={{
+                        background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem'
+                    }}>
+                        Admin Chat
+                    </button>
+                )}
+                {userRole === 'user' && (
+                    <button onClick={() => router.push('/chat/user')} style={{
+                        background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem'
+                    }}>
+                        User Chat
+                    </button>
+                )}
                 {isAuthenticated ? (
                     <button onClick={handleLogout} style={{
                         background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem'
