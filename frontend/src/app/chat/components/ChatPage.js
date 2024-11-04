@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 
 const socket = io('http://localhost:3000'); // Adjust server URL
 
@@ -94,71 +95,74 @@ export default function ChatPage({ userRole }) {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100vh' }}>
-            {/* Left Side: Chat List */}
-            <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
-                <div style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
-                    <h3>Chats</h3>
-                    {userRole === 'user' && (
-                        <button onClick={startNewChat} style={{
-                            width: '100%',
-                            padding: '10px',
-                            marginBottom: '10px',
+        <>
+            <Navbar />
+            <div style={{ display: 'flex', height: '100vh' }}>
+                {/* Left Side: Chat List */}
+                <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
+                    <div style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
+                        <h3>Chats</h3>
+                        {userRole === 'user' && (
+                            <button onClick={startNewChat} style={{
+                                width: '100%',
+                                padding: '10px',
+                                marginBottom: '10px',
+                                backgroundColor: '#007bff',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: 'pointer'
+                            }}>Start New Chat</button>
+                        )}
+                        {chats.map(chat => (
+                            <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
+                                <p><strong>{userRole === 'admin' ? chat.userEmail : 'Admin'}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
+                                <p>{chat.lastMessage || "No messages yet"}</p>
+                                <p style={{ color: chat.status === 'unanswered' ? 'red' : 'green' }}>
+                                    {chat.status === 'unanswered' ? "Unanswered" : "Answered"}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right Side: Chat Messages */}
+                <div style={{ width: '70%', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f8e0' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
+                        {messages.map((msg, index) => (
+                            <div key={index} style={{ marginBottom: '10px', textAlign: msg.senderId === userId ? 'right' : 'left' }}>
+                                <p style={{
+                                    display: 'inline-block',
+                                    padding: '10px',
+                                    borderRadius: '10px',
+                                    backgroundColor: msg.senderId === userId ? '#007bff' : '#e5e5e5',
+                                    color: msg.senderId === userId ? '#fff' : '#000'
+                                }}>
+                                    {msg.message}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex' }}>
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
+                        />
+                        <button onClick={sendMessage} style={{
+                            marginLeft: '10px',
+                            padding: '10px 20px',
                             backgroundColor: '#007bff',
                             color: '#fff',
                             border: 'none',
                             borderRadius: '5px',
                             cursor: 'pointer'
-                        }}>Start New Chat</button>
-                    )}
-                    {chats.map(chat => (
-                        <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-                            <p><strong>{userRole === 'admin' ? chat.userEmail : 'Admin'}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
-                            <p>{chat.lastMessage || "No messages yet"}</p>
-                            <p style={{ color: chat.status === 'unanswered' ? 'red' : 'green' }}>
-                                {chat.status === 'unanswered' ? "Unanswered" : "Answered"}
-                            </p>
-                        </div>
-                    ))}
+                        }}>Send</button>
+                    </div>
                 </div>
             </div>
-
-            {/* Right Side: Chat Messages */}
-            <div style={{ width: '70%', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f8e0' }}>
-                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
-                    {messages.map((msg, index) => (
-                        <div key={index} style={{ marginBottom: '10px', textAlign: msg.senderId === userId ? 'right' : 'left' }}>
-                            <p style={{
-                                display: 'inline-block',
-                                padding: '10px',
-                                borderRadius: '10px',
-                                backgroundColor: msg.senderId === userId ? '#007bff' : '#e5e5e5',
-                                color: msg.senderId === userId ? '#fff' : '#000'
-                            }}>
-                                {msg.message}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-                <div style={{ display: 'flex' }}>
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
-                    />
-                    <button onClick={sendMessage} style={{
-                        marginLeft: '10px',
-                        padding: '10px 20px',
-                        backgroundColor: '#007bff',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
-                    }}>Send</button>
-                </div>
-            </div>
-        </div>
+        </>
     );
 }
 
