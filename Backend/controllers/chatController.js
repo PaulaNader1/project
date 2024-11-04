@@ -24,7 +24,13 @@ const getUserChats = async (req, res) => {
     const { userId } = req.params;
     try {
         const chats = await chatModel.getChatsByUserId(userId);
-        res.json(chats);
+        const chatsWithLastMessage = await Promise.all(
+            chats.map(async (chat) => {
+                const lastMessage = await chatModel.getLastMessage(chat.id);
+                return { ...chat, lastMessage: lastMessage ? lastMessage.message : "No messages yet" };
+            })
+        );
+        res.json(chatsWithLastMessage);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to retrieve chats' });
@@ -35,7 +41,13 @@ const getUserChats = async (req, res) => {
 const getAdminChats = async (req, res) => {
     try {
         const chats = await chatModel.getChatsForAdmin();
-        res.json(chats);
+        const chatsWithLastMessage = await Promise.all(
+            chats.map(async (chat) => {
+                const lastMessage = await chatModel.getLastMessage(chat.id);
+                return { ...chat, lastMessage: lastMessage ? lastMessage.message : "No messages yet" };
+            })
+        );
+        res.json(chatsWithLastMessage);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to retrieve chats' });

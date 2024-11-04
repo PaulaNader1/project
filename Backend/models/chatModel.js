@@ -12,17 +12,27 @@ const createChat = async (userId) => {
 
 // Get all chats for a specific user
 const getChatsByUserId = async (userId) => {
-    const result = await pool.query(
-        'SELECT * FROM chats WHERE user_id = $1 ORDER BY created_at DESC',
-        [userId]
-    );
+    const result = await pool.query(`
+        SELECT chats.*, 
+            (SELECT message FROM messages 
+             WHERE messages.chat_id = chats.id 
+             ORDER BY created_at DESC 
+             LIMIT 1) AS lastMessage
+        FROM chats
+        WHERE chats.user_id = $1
+        ORDER BY created_at DESC
+    `, [userId]);
     return result.rows;
 };
 
 // Get all chats for a specific admin (unanswered and answered)
 const getChatsForAdmin = async () => {
     const result = await pool.query(`
-        SELECT chats.*, users.email AS userEmail
+        SELECT chats.*, users.email AS userEmail,
+            (SELECT message FROM messages 
+             WHERE messages.chat_id = chats.id 
+             ORDER BY created_at DESC 
+             LIMIT 1) AS lastMessage
         FROM chats
         LEFT JOIN users ON chats.user_id = users.id
         ORDER BY chats.status ASC, chats.created_at DESC
@@ -72,6 +82,14 @@ const checkIfAdmin = async (userId) => {
     return result.rows[0]?.role === 'admin';
 };
 
+const getLastMessage = async (chatId) => {
+    const result = await pool.query(
+        'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [chatId]
+    );
+    return result.rows[0];
+};
+
 
 module.exports = {
     checkIfAdmin,
@@ -80,5 +98,6 @@ module.exports = {
     getChatsForAdmin,
     addMessage,
     getMessagesByChatId,
-    updateChatStatus
+    updateChatStatus,
+    getLastMessage
 };

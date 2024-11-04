@@ -10,20 +10,20 @@ export default function ChatPage({ userRole }) {
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
-    const [unansweredChats, setUnansweredChats] = useState([]);
-    const [answeredChats, setAnsweredChats] = useState([]);
     const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
     useEffect(() => {
         const fetchChats = async () => {
-            if (userRole === 'admin') {
-                const response = await axios.get('http://localhost:3000/api/chats/admin');
-                const allChats = response.data;
-                setUnansweredChats(allChats.filter(chat => chat.unanswered));
-                setAnsweredChats(allChats.filter(chat => !chat.unanswered));
-            } else {
-                const response = await axios.get(`http://localhost:3000/api/chats/user/${userId}`);
-                setChats(response.data);
+            try {
+                if (userRole === 'admin') {
+                    const response = await axios.get('http://localhost:3000/api/chats/admin');
+                    setChats(response.data);
+                } else {
+                    const response = await axios.get(`http://localhost:3000/api/chats/user/${userId}`);
+                    setChats(response.data);
+                }
+            } catch (error) {
+                console.error('Error fetching chats:', error);
             }
         };
 
@@ -37,7 +37,7 @@ export default function ChatPage({ userRole }) {
 
         socket.on('newChat', (chat) => {
             if (userRole === 'admin') {
-                setUnansweredChats(prevChats => [...prevChats, chat]);
+                setChats(prevChats => [chat, ...prevChats]);
             }
         });
 
@@ -49,25 +49,27 @@ export default function ChatPage({ userRole }) {
 
     const startNewChat = async () => {
         if (userRole === 'user') {
-            const response = await axios.post('http://localhost:3000/api/chats/create', { userId });
-            const newChat = response.data;
-            setChats(prevChats => [newChat, ...prevChats]);
-            setSelectedChat(newChat);
-            setMessages([]);
+            try {
+                const response = await axios.post('http://localhost:3000/api/chats/create', { userId });
+                const newChat = response.data;
+                setChats(prevChats => [newChat, ...prevChats]);
+                setSelectedChat(newChat);
+                setMessages([]);
+            } catch (error) {
+                console.error('Error starting new chat:', error);
+            }
         }
     };
 
     const selectChat = async (chat) => {
         if (!chat) return;
         setSelectedChat(chat);
-        
         try {
             const response = await axios.get(`http://localhost:3000/api/chats/${chat.id}/messages`);
-            console.log("Fetched Messages for Chat:", response.data); // Debugging log
             setMessages(response.data);
             socket.emit('joinChat', chat.id.toString()); // Join chat room
         } catch (error) {
-            console.error("Error fetching messages for chat:", error);
+            console.error('Error fetching messages:', error);
         }
     };
 
@@ -82,10 +84,9 @@ export default function ChatPage({ userRole }) {
             try {
                 const response = await axios.post('http://localhost:3000/api/chats/message', messageData);
                 const sentMessage = response.data;
-
-                // Add only the server response message to avoid duplication
                 setMessages((prevMessages) => [...prevMessages, sentMessage]);
                 setInput('');
+                socket.emit('sendMessage', sentMessage);
             } catch (error) {
                 console.error('Error sending message:', error);
             }
@@ -95,75 +96,49 @@ export default function ChatPage({ userRole }) {
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             {/* Left Side: Chat List */}
-            <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd', padding: '10px' }}>
-                <h3>Chats</h3>
-                {userRole === 'user' && (
-                    <button onClick={startNewChat} style={{
-                        width: '100%',
-                        padding: '10px',
-                        marginBottom: '10px',
-                        backgroundColor: '#007bff',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
-                    }}>Start New Chat</button>
-                )}
-                {userRole === 'admin' && (
-                    <>
-                        <div style={{ borderBottom: '1px solid #bbb', paddingBottom: '10px', marginBottom: '10px' }}>
-                            <h4>Unanswered</h4>
-                            {unansweredChats.map(chat => (
-                                <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-                                    <p><strong>{chat.userEmail}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
-                                    <p>Last message: {chat.lastMessage || "No messages yet"}</p>
-                                </div>
-                            ))}
-                        </div>
-                        <div style={{ borderTop: '1px solid #bbb', paddingTop: '10px' }}>
-                            <h4>Answered</h4>
-                            {answeredChats.map(chat => (
-                                <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-                                    <p><strong>{chat.userEmail}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
-                                    <p>Last message: {chat.lastMessage || "No messages yet"}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                )}
-                {userRole === 'user' && (
-                    chats.map(chat => (
+            <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
+                <div style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
+                    <h3>Chats</h3>
+                    {userRole === 'user' && (
+                        <button onClick={startNewChat} style={{
+                            width: '100%',
+                            padding: '10px',
+                            marginBottom: '10px',
+                            backgroundColor: '#007bff',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                        }}>Start New Chat</button>
+                    )}
+                    {chats.map(chat => (
                         <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-                            <p>Admin - {new Date(chat.created_at).toLocaleString()}</p>
-                            <p>Last message: {chat.lastMessage || "No messages yet"}</p>
+                            <p><strong>{userRole === 'admin' ? chat.userEmail : 'Admin'}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
+                            <p>{chat.lastMessage || "No messages yet"}</p>
+                            <p style={{ color: chat.status === 'unanswered' ? 'red' : 'green' }}>
+                                {chat.status === 'unanswered' ? "Unanswered" : "Answered"}
+                            </p>
                         </div>
-                    ))
-                )}
+                    ))}
+                </div>
             </div>
 
             {/* Right Side: Chat Messages */}
             <div style={{ width: '70%', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f8e0' }}>
                 <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
-                    {messages.length > 0 ? (
-                        messages.map((msg, index) => (
-                            <div key={index} style={{ marginBottom: '10px', textAlign: msg.sender_id === userId ? 'right' : 'left' }}>
-                                <p style={{
-                                    display: 'inline-block',
-                                    padding: '10px',
-                                    borderRadius: '10px',
-                                    backgroundColor: msg.sender_id === userId ? '#007bff' : '#e5e5e5',
-                                    color: msg.sender_id === userId ? '#fff' : '#000',
-                                    maxWidth: '70%',
-                                    wordWrap: 'break-word',
-                                    textAlign: msg.sender_id === userId ? 'right' : 'left'
-                                }}>
-                                    {msg.message}
-                                </p>
-                            </div>
-                        ))
-                    ) : (
-                        <p style={{ color: '#888' }}>No messages to display.</p>
-                    )}
+                    {messages.map((msg, index) => (
+                        <div key={index} style={{ marginBottom: '10px', textAlign: msg.senderId === userId ? 'right' : 'left' }}>
+                            <p style={{
+                                display: 'inline-block',
+                                padding: '10px',
+                                borderRadius: '10px',
+                                backgroundColor: msg.senderId === userId ? '#007bff' : '#e5e5e5',
+                                color: msg.senderId === userId ? '#fff' : '#000'
+                            }}>
+                                {msg.message}
+                            </p>
+                        </div>
+                    ))}
                 </div>
                 <div style={{ display: 'flex' }}>
                     <input
@@ -193,8 +168,10 @@ const chatItemStyle = {
     cursor: 'pointer',
     borderBottom: '1px solid #ddd',
     backgroundColor: '#fff',
-    marginBottom: '5px'
+    marginBottom: '5px',
+    borderRadius: '5px'
 };
+
 
 
 
@@ -264,10 +241,9 @@ const chatItemStyle = {
 //     const selectChat = async (chat) => {
 //         if (!chat) return;
 //         setSelectedChat(chat);
-        
+
 //         try {
 //             const response = await axios.get(`http://localhost:3000/api/chats/${chat.id}/messages`);
-//             console.log("Fetched Messages for Chat:", response.data); // Debugging log
 //             setMessages(response.data);
 //             socket.emit('joinChat', chat.id.toString()); // Join chat room
 //         } catch (error) {
@@ -286,9 +262,10 @@ const chatItemStyle = {
 //             try {
 //                 const response = await axios.post('http://localhost:3000/api/chats/message', messageData);
 //                 const sentMessage = response.data;
+
+//                 // Add only the server response message to avoid duplication
 //                 setMessages((prevMessages) => [...prevMessages, sentMessage]);
 //                 setInput('');
-//                 socket.emit('sendMessage', sentMessage);
 //             } catch (error) {
 //                 console.error('Error sending message:', error);
 //             }
@@ -298,48 +275,50 @@ const chatItemStyle = {
 //     return (
 //         <div style={{ display: 'flex', height: '100vh' }}>
 //             {/* Left Side: Chat List */}
-//             <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
-//                 <div style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
-//                     <h3>Chats</h3>
-//                     {userRole === 'user' && (
-//                         <button onClick={startNewChat} style={{
-//                             width: '100%',
-//                             padding: '10px',
-//                             marginBottom: '10px',
-//                             backgroundColor: '#007bff',
-//                             color: '#fff',
-//                             border: 'none',
-//                             borderRadius: '5px',
-//                             cursor: 'pointer'
-//                         }}>Start New Chat</button>
-//                     )}
-//                     {userRole === 'admin' && (
-//                         <>
+//             <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd', padding: '10px' }}>
+//                 <h3>Chats</h3>
+//                 {userRole === 'user' && (
+//                     <button onClick={startNewChat} style={{
+//                         width: '100%',
+//                         padding: '10px',
+//                         marginBottom: '10px',
+//                         backgroundColor: '#007bff',
+//                         color: '#fff',
+//                         border: 'none',
+//                         borderRadius: '5px',
+//                         cursor: 'pointer'
+//                     }}>Start New Chat</button>
+//                 )}
+//                 {userRole === 'admin' && (
+//                     <>
+//                         <div style={{ borderBottom: '1px solid #bbb', paddingBottom: '10px', marginBottom: '10px' }}>
 //                             <h4>Unanswered</h4>
 //                             {unansweredChats.map(chat => (
 //                                 <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-//                                     <p>{chat.userEmail} - {chat.created_at}</p>
-//                                     <p>Last message: {chat.lastMessage}</p>
+//                                     <p><strong>{chat.userEmail}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
+//                                     <p>Last message: {chat.lastMessage || "No messages yet"}</p>
 //                                 </div>
 //                             ))}
+//                         </div>
+//                         <div style={{ borderTop: '1px solid #bbb', paddingTop: '10px' }}>
 //                             <h4>Answered</h4>
 //                             {answeredChats.map(chat => (
 //                                 <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-//                                     <p>{chat.userEmail} - {chat.created_at}</p>
-//                                     <p>Last message: {chat.lastMessage}</p>
+//                                     <p><strong>{chat.userEmail}</strong> - {new Date(chat.created_at).toLocaleString()}</p>
+//                                     <p>Last message: {chat.lastMessage || "No messages yet"}</p>
 //                                 </div>
 //                             ))}
-//                         </>
-//                     )}
-//                     {userRole === 'user' && (
-//                         chats.map(chat => (
-//                             <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
-//                                 <p>Admin - {chat.created_at}</p>
-//                                 <p>Last message: {chat.lastMessage}</p>
-//                             </div>
-//                         ))
-//                     )}
-//                 </div>
+//                         </div>
+//                     </>
+//                 )}
+//                 {userRole === 'user' && (
+//                     chats.map(chat => (
+//                         <div key={chat.id} style={chatItemStyle} onClick={() => selectChat(chat)}>
+//                             <p>Admin - {new Date(chat.created_at).toLocaleString()}</p>
+//                             <p>Last message: {chat.lastMessage || "No messages yet"}</p>
+//                         </div>
+//                     ))
+//                 )}
 //             </div>
 
 //             {/* Right Side: Chat Messages */}
@@ -347,13 +326,16 @@ const chatItemStyle = {
 //                 <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
 //                     {messages.length > 0 ? (
 //                         messages.map((msg, index) => (
-//                             <div key={index} style={{ marginBottom: '10px', textAlign: msg.sender === userRole ? 'right' : 'left' }}>
+//                             <div key={index} style={{ marginBottom: '10px', textAlign: msg.sender_id === userId ? 'right' : 'left' }}>
 //                                 <p style={{
 //                                     display: 'inline-block',
 //                                     padding: '10px',
 //                                     borderRadius: '10px',
-//                                     backgroundColor: msg.sender === userRole ? '#007bff' : '#e5e5e5',
-//                                     color: msg.sender === userRole ? '#fff' : '#000'
+//                                     backgroundColor: msg.sender_id === userId ? '#007bff' : '#e5e5e5',
+//                                     color: msg.sender_id === userId ? '#fff' : '#000',
+//                                     maxWidth: '70%',
+//                                     wordWrap: 'break-word',
+//                                     textAlign: msg.sender_id === userId ? 'right' : 'left'
 //                                 }}>
 //                                     {msg.message}
 //                                 </p>
