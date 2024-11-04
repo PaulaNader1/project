@@ -39,4 +39,27 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
-module.exports = { createOrder, getOrderById, updateOrderStatus };
+const getAllOrders = async (req, res) => {
+    try {
+        const orders = await orderModel.getAllOrders();
+        res.json(orders);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+};
+
+// Controller to get all orders with user data
+const getAllOrdersWithUserData = async (req, res) => {
+    try {
+        const orders = await orderModel.getAllOrdersWithUserData();
+        console.log(orders)
+        res.json(orders);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+};
+
+
+module.exports = { getAllOrdersWithUserData, createOrder, getOrderById, updateOrderStatus, getAllOrders};

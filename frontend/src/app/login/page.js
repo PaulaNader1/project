@@ -34,11 +34,14 @@ export default function Login() {
         if (!validateForm()) return;
 
         try {
-            const response = await axios.post(`http://192.168.1.6:3000/api/users/login`, { email, password });
+            const response = await axios.post(`http://192.168.1.24:3000/api/users/login`, { email, password });
             const { token } = response.data;
+            const role = response.data.role
             const userId = response.data.id
             console.log(userId);
+            console.log(role);
             localStorage.setItem('authToken', token);
+            localStorage.setItem('role', role);
             localStorage.setItem('userId', userId); // Store userId for profile page
             setMessage('Login successful! Redirecting...');
             setTimeout(() => {

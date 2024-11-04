@@ -18,7 +18,7 @@ export default function OrderDetails() {
     useEffect(() => {
         const fetchOrder = async () => {
             try {
-                const response = await axios.get(`http://localhost:3000/api/orders/${orderId}`);
+                const response = await axios.get(`http://192.168.1.24:3000/api/orders/${orderId}`);
                 const orderData = response.data;
 
                 if (orderData.length > 0) {
@@ -35,7 +35,7 @@ export default function OrderDetails() {
 
         fetchOrder();
 
-        socket = io('http://localhost:3000'); // Connect to backend Socket.io server
+        socket = io('http://192.168.1.24:3000'); // Connect to backend Socket.io server
         socket.on('orderStatusUpdated', ({ orderId: updatedOrderId, status: newStatus }) => {
             if (updatedOrderId === orderId) {
                 setStatus(newStatus);

@@ -20,7 +20,7 @@ export default function Home() {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/products');
+      const response = await axios.get('http://192.168.1.24:3000/api/products');
       setProducts(response.data);
     } catch (err) {
       console.error('Failed to load products', err);
@@ -30,7 +30,7 @@ export default function Home() {
   const handleOrder = async (productId) => {
     try {
       const userId = localStorage.getItem('userId');
-      const response = await axios.post('http://localhost:3000/api/orders/create', {
+      const response = await axios.post('http://192.168.1.24:3000/api/orders/create', {
         userId,
         products: [{ product_id: productId, quantity: 1 }]
       });

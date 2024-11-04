@@ -34,7 +34,7 @@ export default function Register() {
         if (!validateForm()) return;
 
         try {
-            await axios.post(`http://localhost:3000/api/users/signup`, { email, password });
+            await axios.post(`http://192.168.1.24:3000/api/users/signup`, { email, password });
             setMessage('Registration successful! Redirecting to login...');
             setTimeout(() => {
                 router.push('/login'); // Redirect to login page

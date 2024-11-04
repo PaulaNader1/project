@@ -2,12 +2,12 @@ const pool = require('./db'); // Import the pool from db.js
 const bcrypt = require('bcryptjs');
 
 // Function to create a new user (signup)
-const createUser = async (email, password) => {
+const createUser = async (email, password, role = 'user') => {
    try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const result = await pool.query(
-         'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
-         [email, hashedPassword]
+         'INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING id, email',
+         [email, hashedPassword, role]
       );
       return result.rows[0];
    } catch (err) {

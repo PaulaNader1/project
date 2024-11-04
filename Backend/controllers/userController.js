@@ -34,7 +34,8 @@ const login = async (req, res) => {
         const user = await userModel.getUserByEmail(email);
         if (user && await bcrypt.compare(password, user.password)) {
             const id = user.id;
-            const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const role = user.role;
+            const token = jwt.sign({ userId: user.id, role: role }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.json({ token, id });
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
