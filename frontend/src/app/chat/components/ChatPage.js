@@ -39,7 +39,7 @@ export default function ChatPage({ userRole }) {
         if (socket) {
             socket.on('receiveMessage', (message) => {
                 if (message.chat_id === selectedChat?.id) {
-                    setMessages((prevMessages) => [...prevMessages, message]);
+                    setMessages((prevMessages) => [...prevMessages, message]); // Adding message again here
                 }
             });
 
@@ -123,15 +123,15 @@ export default function ChatPage({ userRole }) {
             };
             try {
                 const response = await axios.post('http://localhost:3000/api/chats/message', messageData);
-                const sentMessage = response.data;
-                setMessages((prevMessages) => [...prevMessages, sentMessage]);
-                setInput('');
-                socket.emit('sendMessage', sentMessage);
+                socket.emit('sendMessage', response.data); // Only emit, don't update state here
+                setInput(''); // Clear input after sending
             } catch (error) {
                 console.error('Error sending message:', error);
             }
         }
     };
+    
+    
 
     const markAsAnswered = async (chatId) => {
         try {
@@ -146,6 +146,7 @@ export default function ChatPage({ userRole }) {
         <>
             <Navbar />
             <div style={{ display: 'flex', height: '100vh' }}>
+                {/* Left Side: Chat List */}
                 <div style={{ width: '30%', backgroundColor: '#d9f2ff', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
                     <div style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
                         <h3 style={{ color: '#000' }}>Chats</h3>
@@ -189,8 +190,10 @@ export default function ChatPage({ userRole }) {
                         ))}
                     </div>
                 </div>
-
+    
+                {/* Right Side: Chat Messages */}
                 <div style={{ width: '70%', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f8e0' }}>
+                    {/* Header with User Email and Status */}
                     {otherUserEmail && (
                         <div style={{
                             padding: '10px',
@@ -205,24 +208,35 @@ export default function ChatPage({ userRole }) {
                             </span>
                         </div>
                     )}
-
+    
                     <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
                         {messages.map((msg, index) => (
-                            <div key={index} style={{ marginBottom: '10px', textAlign: msg.senderId === userId ? 'right' : 'left' }}>
+                            <div 
+                                key={index} 
+                                style={{ 
+                                    marginBottom: '10px', 
+                                    display: 'flex', 
+                                    justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' 
+                                }}
+                            >
                                 <p style={{
-                                    display: 'inline-block',
-                                    padding: '10px',
-                                    borderRadius: '10px',
-                                    backgroundColor: msg.senderId === userId ? '#007bff' : '#e5e5e5',
-                                    color: msg.senderId === userId ? '#fff' : '#000',
-                                    wordBreak: 'break-word'
+                                    maxWidth: '70%',
+                                    padding: '10px 15px',
+                                    borderRadius: '15px',
+                                    backgroundColor: msg.senderId === userId ? '#dcf8c6' : '#ffffff',
+                                    color: '#000',
+                                    border: msg.senderId === userId ? '1px solid #34b7f1' : '1px solid #e5e5e5',
+                                    textAlign: 'left',
+                                    wordBreak: 'break-word',
+                                    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+                                    alignSelf: msg.senderId === userId ? 'flex-end' : 'flex-start'
                                 }}>
                                     {msg.message}
                                 </p>
                             </div>
                         ))}
                     </div>
-
+    
                     <div style={{ display: 'flex' }}>
                         <input
                             type="text"
@@ -240,7 +254,7 @@ export default function ChatPage({ userRole }) {
                         />
                         <button onClick={sendMessage} style={{
                             marginLeft: '10px',
-                            padding: '10px                             20px',
+                            padding: '10px 20px',
                             backgroundColor: '#007bff',
                             color: '#fff',
                             border: 'none',
@@ -252,6 +266,7 @@ export default function ChatPage({ userRole }) {
             </div>
         </>
     );
+    
 }
 
 // Chat item styling
