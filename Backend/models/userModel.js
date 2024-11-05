@@ -29,15 +29,34 @@ const getUserByEmail = async (email) => {
 };
 
 const getUserById = async (id) => {
-    try {
-       const result = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
-          [id]
-       );
-       return result.rows[0];
-    } catch (err) {
-       throw err;
-    }
- };
+   try {
+      const result = await pool.query(
+         'SELECT * FROM users WHERE id = $1',
+         [id]
+      );
+      return result.rows[0];
+   } catch (err) {
+      throw err;
+   }
+};
 
-module.exports = { createUser, getUserByEmail, getUserById};
+const updateUserStatus = async (userId, status) => {
+   if (!userId || isNaN(userId)) {
+       console.warn('Invalid userId for status update:', userId);
+       return;
+   }
+
+   try {
+       await pool.query(
+           'UPDATE users SET status = $1 WHERE id = $2',
+           [status, userId]
+       );
+       console.log("user status updated")
+   } catch (err) {
+       console.error('Error updating user status:', err);
+       throw err;
+   }
+};
+
+
+module.exports = {updateUserStatus, createUser, getUserByEmail, getUserById };

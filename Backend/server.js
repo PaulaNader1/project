@@ -9,6 +9,7 @@ const productRoutes = require('./routes/productRoutes');
 const ordersRoutes = require('./routes/orderRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const chatController = require('./controllers/chatController');
+const userModel = require('./models/userModel');
 
 dotenv.config();
 
@@ -16,48 +17,67 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const server = http.createServer(app); // Create HTTP server
+const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3001", // Adjust if your frontend runs on a different port
+        origin: "http://localhost:3001",
         methods: ["GET", "POST"]
     }
 });
 
-// Pass the io instance to the chatController
 chatController.setSocketIo(io);
 
-// Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/chats', chatRoutes);
 
-// Socket.io connection
-io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
+io.on('connection', async (socket) => {
+    const userId = socket.handshake.query.userId;
 
-    // Listen for order status updates from the client
+    console.log('Client connected:', socket.id, 'User ID:', userId);
+
+    if (userId && userId !== 'null' && !isNaN(userId)) {
+        try {
+            await userModel.updateUserStatus(userId, 'online');
+            console.log(`User ID ${userId} status set to online.`);
+            io.emit('userStatusUpdated', { userId, status: 'online' });
+        } catch (error) {
+            console.error('Error updating user status to online:', error);
+        }
+    } else {
+        console.warn(`Invalid userId received for socket ${socket.id}:`, userId);
+    }
+
     socket.on('updateOrderStatus', ({ orderId, status }) => {
-        // Emit the status update to all clients
+        console.log(`Order status updated. Order ID: ${orderId}, Status: ${status}`);
         io.emit('orderStatusUpdated', { orderId, status });
     });
 
-    // Listen for chat messages within the specific chat room
     socket.on('joinChat', (chatId) => {
         socket.join(chatId);
-        console.log(`Client ${socket.id} joined chat room: ${chatId}`);
+        console.log(`Client ${socket.id} (User ID: ${userId}) joined chat room: ${chatId}`);
     });
 
     socket.on('sendMessage', (message) => {
         const { chatId } = message;
-        console.log('Message received on server:', message);
-        // Broadcast message to the specific room
+        console.log(`Message received in chat room ${chatId} from User ID ${userId}:`, message);
         io.to(chatId).emit('receiveMessage', message);
     });
 
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
+    socket.on('disconnect', async () => {
+        console.log(`Client disconnected: ${socket.id}, User ID: ${userId}`);
+        if (userId && userId !== 'null' && !isNaN(userId)) {
+            try {
+                await userModel.updateUserStatus(userId, 'offline');
+                console.log(`User ID ${userId} status set to offline.`);
+                io.emit('userStatusUpdated', { userId, status: 'offline' });
+            } catch (error) {
+                console.error('Error updating user status to offline on disconnect:', error);
+            }
+        } else {
+            console.warn(`Skipping status update for invalid userId on disconnect: ${userId}`);
+        }
     });
 });
 
@@ -71,9 +91,10 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { // Start server with server.listen
+server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
 
 
 

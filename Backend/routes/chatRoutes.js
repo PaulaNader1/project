@@ -8,5 +8,6 @@ router.get('/user/:userId', chatController.getUserChats); // Get all chats for a
 router.get('/admin', chatController.getAdminChats); // Get all chats for an admin
 router.post('/message', chatController.sendMessage); // Send a message in a chat
 router.get('/:chatId/messages', chatController.getMessages); // Get messages for a chat
+router.put('/:chatId/status', chatController.updateChatStatus); // Update chat status
 
 module.exports = router;

@@ -68,11 +68,12 @@ const sendMessage = async (req, res) => {
         const newMessage = await chatModel.addMessage(chatId, senderId, message, isMarkdown);
 
         // Check if sender is admin
-        const isAdmin = await chatModel.checkIfAdmin(senderId);
+        const isAdmin = await chatModel.isAdmin(senderId);
 
         // If the message is from an admin, mark the chat as answered
         if (isAdmin) {
-            await chatModel.updateChatStatus(chatId, senderId);
+            await chatModel.updateChatStatus(chatId, "answered", senderId);
+            io.to(chatId.toString()).emit('statusUpdated', { chatId, status: 'answered' });
         }
 
         // Emit the message to the chat room
@@ -98,8 +99,22 @@ const getMessages = async (req, res) => {
     }
 };
 
+const updateChatStatus = async (req, res) => {
+    const { chatId } = req.params;
+    const { status } = req.body;
+
+    try {
+        await chatModel.updateChatStatus(chatId, status); // Call the model function to update status
+        res.status(200).json({ message: 'Chat status updated successfully' });
+    } catch (err) {
+        console.error('Error updating chat status:', err);
+        res.status(500).json({ error: 'Failed to update chat status' });
+    }
+};
+
 module.exports = {
     createChat,
+    updateChatStatus,
     getUserChats,
     getAdminChats,
     sendMessage,

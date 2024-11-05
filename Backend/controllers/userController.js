@@ -59,4 +59,32 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-module.exports = { signup, login, getUserProfile };
+const getUserById = async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        const user = await userModel.getUserById(id);
+        if (!user){
+            res.status(404).json({error: "no user with this user id"});
+        }
+
+        res.json(user);
+    }catch (err) {
+        console.log(err);
+        res.status(500).json({error: "faild to retrieve user info"});
+    }
+};
+
+const getUserStatus = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query('SELECT status FROM users WHERE id = $1', [userId]);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to retrieve user status' });
+    }
+};
+
+
+module.exports = { getUserStatus, signup, login, getUserProfile, getUserById };

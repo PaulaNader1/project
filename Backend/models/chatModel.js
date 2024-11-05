@@ -35,7 +35,7 @@ const getChatsForAdmin = async () => {
              LIMIT 1) AS lastMessage
         FROM chats
         LEFT JOIN users ON chats.user_id = users.id
-        ORDER BY chats.status ASC, chats.created_at DESC
+        ORDER BY chats.status DESC, chats.created_at DESC
     `);
     return result.rows;
 };
@@ -67,14 +67,14 @@ const getMessagesByChatId = async (chatId) => {
 };
 
 // Update chat status and admin_id when an admin responds
-const updateChatStatus = async (chatId, adminId) => {
+const updateChatStatus = async (chatId, status, admin_id) => {
     await pool.query(
-        'UPDATE chats SET status = $1, admin_id = $2 WHERE id = $3',
-        ['answered', adminId, chatId]
+        'UPDATE chats SET status = $1 , admin_id = $2 WHERE id = $3',
+        [status, admin_id, chatId]
     );
 };
 
-const checkIfAdmin = async (userId) => {
+const isAdmin = async (userId) => {
     const result = await pool.query(
         'SELECT role FROM users WHERE id = $1',
         [userId]
@@ -92,7 +92,7 @@ const getLastMessage = async (chatId) => {
 
 
 module.exports = {
-    checkIfAdmin,
+    isAdmin,
     createChat,
     getChatsByUserId,
     getChatsForAdmin,
