@@ -112,7 +112,21 @@ const updateChatStatus = async (req, res) => {
     }
 };
 
+const markMessagesAsRead = async (req, res) => {
+    const { chatId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        await chatModel.markMessagesAsRead(chatId, userId);
+        res.status(200).json({ success: true, message: 'Messages marked as read.' });
+    } catch (error) {
+        console.error('Error marking messages as read:', error);
+        res.status(500).json({ error: 'Failed to mark messages as read' });
+    }
+};
+
 module.exports = {
+    markMessagesAsRead,
     createChat,
     updateChatStatus,
     getUserChats,

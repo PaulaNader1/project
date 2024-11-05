@@ -65,6 +65,11 @@ io.on('connection', async (socket) => {
         io.to(chatId).emit('receiveMessage', message);
     });
 
+    socket.on('markMessagesRead', ({ chatId, userId }) => {
+        // Broadcast to the other user in the chat that messages are read
+        socket.to(chatId.toString()).emit('messagesMarkedAsRead', { chatId });
+    });
+
     socket.on('disconnect', async () => {
         console.log(`Client disconnected: ${socket.id}, User ID: ${userId}`);
         if (userId && userId !== 'null' && !isNaN(userId)) {

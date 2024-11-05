@@ -90,8 +90,16 @@ const getLastMessage = async (chatId) => {
     return result.rows[0];
 };
 
+const markMessagesAsRead = async (chatId, userId) => {
+        await pool.query(
+            'UPDATE messages SET is_read = TRUE WHERE chat_id = $1 AND sender_id != $2 AND is_read = FALSE',
+            [chatId, userId]
+        );
+};
+
 
 module.exports = {
+    markMessagesAsRead,
     isAdmin,
     createChat,
     getChatsByUserId,
