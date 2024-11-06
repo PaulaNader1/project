@@ -1,4 +1,5 @@
 // server.js
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -10,6 +11,7 @@ const ordersRoutes = require('./routes/orderRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const chatController = require('./controllers/chatController');
 const userModel = require('./models/userModel');
+const chatModel = require('./models/chatModel');
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ app.use('/api/chats', chatRoutes);
 
 io.on('connection', async (socket) => {
     const userId = socket.handshake.query.userId;
+    socket.userId = userId ? userId.toString() : null; // Ensure userId is a string
 
     console.log('Client connected:', socket.id, 'User ID:', userId);
 
@@ -54,20 +57,41 @@ io.on('connection', async (socket) => {
         io.emit('orderStatusUpdated', { orderId, status });
     });
 
-    socket.on('joinChat', (chatId) => {
-        socket.join(chatId);
+    // Handle joining chat rooms
+    socket.on('joinChat', async (chatId) => {
+        socket.join(chatId.toString());
         console.log(`Client ${socket.id} (User ID: ${userId}) joined chat room: ${chatId}`);
+    
+        // Mark previous unread messages as read for this user
+        try {
+            const messageIds = await chatModel.markMessagesAsRead(chatId, userId);
+    
+            // Emit the event to update the frontend
+            io.to(chatId.toString()).emit('messagesMarkedAsRead', { chatId, messageIds });
+    
+            // NEW CODE: Emit to the recipient's socket(s) if they are not in the room
+            const recipientId = await getOtherUserId(chatId, userId);
+            if (recipientId) {
+                const recipientSockets = findSocketsByUserId(recipientId.toString());
+                console.log(`Recipient ID: ${recipientId}, Sockets found: ${recipientSockets.length}`);
+                recipientSockets.forEach((s) => {
+                    console.log(`Emitting 'messagesMarkedAsRead' to socket ID: ${s.id}`);
+                    s.emit('messagesMarkedAsRead', { chatId, messageIds });
+                });
+            } else {
+                console.log('Recipient ID is null, cannot emit messagesMarkedAsRead.');
+            }
+    
+            console.log(`Messages marked as read in chat room: ${chatId}`);
+        } catch (error) {
+            console.error(`Error marking messages as read for chat ${chatId}:`, error);
+        }
     });
 
-    socket.on('sendMessage', (message) => {
-        const { chatId } = message;
-        console.log(`Message received in chat room ${chatId} from User ID ${userId}:`, message);
-        io.to(chatId).emit('receiveMessage', message);
-    });
-
-    socket.on('markMessagesRead', ({ chatId, userId }) => {
-        // Broadcast to the other user in the chat that messages are read
-        socket.to(chatId.toString()).emit('messagesMarkedAsRead', { chatId });
+    // Handle leaving chat rooms
+    socket.on('leaveChat', (chatId) => {
+        socket.leave(chatId.toString());
+        console.log(`Client ${socket.id} (User ID: ${userId}) left chat room: ${chatId}`);
     });
 
     socket.on('disconnect', async () => {
@@ -86,6 +110,30 @@ io.on('connection', async (socket) => {
     });
 });
 
+async function getOtherUserId(chatId, currentUserId) {
+    const chat = await chatModel.getChatById(chatId);
+    const chatUserId = chat.user_id.toString();
+    const chatAdminId = chat.admin_id ? chat.admin_id.toString() : null;
+
+    let otherUserId = null;
+    if (chatUserId === currentUserId) {
+        otherUserId = chatAdminId;
+    } else {
+        otherUserId = chatUserId;
+    }
+    console.log(`getOtherUserId - Chat ID: ${chatId}, Current User ID: ${currentUserId}, Other User ID: ${otherUserId}`);
+    return otherUserId;
+}
+
+// Function to find all sockets connected for a given userId
+function findSocketsByUserId(userId) {
+    const sockets = Array.from(io.sockets.sockets.values()).filter((socket) => {
+        return socket.userId === userId;
+    });
+    console.log(`findSocketsByUserId - User ID: ${userId}, Sockets Found: ${sockets.length}`);
+    return sockets;
+}
+
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
@@ -99,6 +147,7 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
 
 
 
